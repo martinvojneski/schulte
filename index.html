@@ -162,7 +162,6 @@
     letter-spacing: -0.02em;
     touch-action: manipulation;
   }
-  [data-mark="on"] .cell.found { background: transparent; color: var(--muted); opacity: 0.4; }
   .cell.hit { animation: hit 0.24s ease-out; }
   .cell.miss { animation: miss 0.36s ease-out; }
   @keyframes hit {
@@ -223,9 +222,7 @@
   }
   .chip.is-best { background: var(--accent-soft); color: var(--accent-text); box-shadow: none; }
   .empty { align-self: center; font-size: 14px; color: var(--muted); }
-  .foot-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--muted); }
-  .toggle { display: flex; align-items: center; gap: 8px; }
-  .toggle input { margin: 0; accent-color: var(--accent); }
+  .foot-row { display: flex; justify-content: flex-end; align-items: center; }
   .link {
     appearance: none; border: 0; background: none; padding: 6px 0;
     color: var(--muted); font-size: 14px;
@@ -236,7 +233,7 @@
 </style>
 </head>
 <body>
-<div class="app" id="app" data-state="idle" data-mark="on">
+<div class="app" id="app" data-state="idle">
   <header class="top">
     <h1 class="brand">Schulte</h1>
     <div class="seg" id="sizes" role="radiogroup" aria-label="Grid size">
@@ -279,7 +276,6 @@
     </div>
     <div class="chips" id="recent"></div>
     <div class="foot-row">
-      <label class="toggle"><input type="checkbox" id="mark" switch> Mark found numbers</label>
       <button type="button" class="link" id="reset">Reset stats</button>
     </div>
   </footer>
@@ -295,7 +291,7 @@
   const STORE_KEY = 'schulte:v1';
 
   // ---- Persistence ----
-  const data = { n: 5, mark: true, runs: {}, best: {} };
+  const data = { n: 5, runs: {}, best: {} };
   try { Object.assign(data, JSON.parse(localStorage.getItem(STORE_KEY)) || {}); } catch {}
   if (!SIZES.includes(data.n)) data.n = 5;
   const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch {} };
@@ -379,7 +375,7 @@
     if (state !== 'play' || !el || !el.dataset.v) return;
     const v = Number(el.dataset.v);
     if (v === next) {
-      el.classList.add('found');
+      // Found tiles keep their normal look, so they stay in the way of the search.
       flash(el, 'hit');
       if (next === total) return finish();
       next++;
@@ -484,11 +480,6 @@
     const b = e.target.closest('button[data-n]');
     if (b) setSize(Number(b.dataset.n));
   });
-  $('mark').addEventListener('change', (e) => {
-    data.mark = e.target.checked;
-    app.dataset.mark = data.mark ? 'on' : 'off';
-    save();
-  });
   // Two-tap confirm (no system dialog): first tap arms the button for 3 seconds.
   let resetArmed = 0;
   $('reset').addEventListener('click', (e) => {
@@ -516,8 +507,6 @@
   document.addEventListener('dblclick', (e) => e.preventDefault());
 
   // ---- Init ----
-  $('mark').checked = data.mark;
-  app.dataset.mark = data.mark ? 'on' : 'off';
   setSize(data.n);
 
   // Offline support once installed (only when served over https/localhost as a top-level page).

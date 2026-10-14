@@ -5,7 +5,7 @@ The numbers are only generated when you press **Start** (the timer starts at the
 
 - Wrong taps flash red and count as mistakes; re-tapping an already found number is ignored.
 - Best time and recent runs are kept per grid size on the device.
-- "Mark found numbers" dims numbers you've already found (turn it off for the classic, harder version).
+- Found numbers stay on the board looking exactly like the others (classic Schulte), so they keep getting in the way of the search.
 - Works offline after the first visit and installs to the iPhone home screen as a full-screen app.
 
 ## Files
