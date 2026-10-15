@@ -215,15 +215,27 @@
   .foot-head { display: flex; justify-content: space-between; align-items: baseline; }
   .avg { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .avg b { color: var(--ink); font-weight: 650; }
-  /* Fixed 5-slot row: more runs never make it wider. */
-  .chips { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; min-height: 30px; }
+  /* Swipeable history, newest first. It scrolls inside itself, so it never widens the page.
+     5½ chips show at once; the cut-off half chip signals there is more to swipe to. */
+  .chips {
+    display: flex; gap: 6px; min-height: 30px;
+    overflow-x: auto; overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    touch-action: pan-x;
+  }
+  .chips::-webkit-scrollbar { display: none; }
   .chip {
+    flex: 0 0 calc((100% - 5 * 6px) / 5.5);
     min-width: 0; padding: 5px 2px; border-radius: 999px; text-align: center; white-space: nowrap;
+    scroll-snap-align: start;
     background: var(--surface); box-shadow: inset 0 0 0 1px var(--line);
     font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;
   }
   .chip.is-best { background: var(--accent-soft); color: var(--accent-text); box-shadow: none; }
-  .empty { grid-column: 1 / -1; align-self: center; font-size: 14px; color: var(--muted); }
+  .empty { align-self: center; font-size: 14px; color: var(--muted); }
   .foot-row { display: flex; justify-content: flex-end; align-items: center; }
   .link {
     appearance: none; border: 0; background: none; padding: 6px 0;
@@ -273,10 +285,10 @@
 
   <footer class="foot">
     <div class="foot-head">
-      <span class="label">Recent</span>
+      <span class="label" id="recent-label">Recent</span>
       <span class="avg" id="avg"></span>
     </div>
-    <div class="chips" id="recent"></div>
+    <div class="chips" id="recent" aria-label="Recent times, newest first"></div>
     <div class="foot-row">
       <button type="button" class="link" id="reset">Reset stats</button>
     </div>
@@ -289,8 +301,8 @@
   const app = $('app'), board = $('board'), cells = $('cells');
   const timeEl = $('time'), nextEl = $('next'), bestEl = $('best');
   const SIZES = [4, 5, 6];
-  const KEEP_RUNS = 50;
-  const RECENT = 5; // runs shown in the footer and averaged
+  const KEEP_RUNS = 100; // history kept per grid size, all of it swipeable
+  const AVG_OF = 5;      // latest runs in the footer average
   const STORE_KEY = 'schulte:v1';
 
   // ---- Persistence ----
@@ -445,21 +457,23 @@
     bestEl.textContent = best == null ? '–' : fmt(best);
 
     const recent = $('recent');
+    $('recent-label').textContent = runs.length ? `Recent · ${runs.length}` : 'Recent';
     if (!runs.length) {
       const p = document.createElement('span');
       p.className = 'empty';
       p.textContent = 'No runs yet on this size.';
       recent.replaceChildren(p);
     } else {
-      recent.replaceChildren(...runs.slice(0, RECENT).map((r) => {
+      recent.replaceChildren(...runs.map((r) => {
         const c = document.createElement('span');
         c.className = 'chip' + (r.t === best ? ' is-best' : '');
         c.textContent = fmt(r.t);
         return c;
       }));
     }
+    recent.scrollLeft = 0; // newest run back in view
 
-    const last = runs.slice(0, RECENT);
+    const last = runs.slice(0, AVG_OF);
     $('avg').innerHTML = last.length >= 2
       ? `avg of last ${last.length} <b>${fmt(last.reduce((s, r) => s + r.t, 0) / last.length)}s</b>`
       : '';
@@ -505,7 +519,10 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state === 'play') quit(); });
 
   // Keep the screen still on iPhone: no rubber-band scrolling, pinch or double-tap zoom.
-  document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+  // The recent-times list is the one place a swipe is allowed.
+  document.addEventListener('touchmove', (e) => {
+    if (!e.target.closest('.chips')) e.preventDefault();
+  }, { passive: false });
   document.addEventListener('gesturestart', (e) => e.preventDefault());
   document.addEventListener('dblclick', (e) => e.preventDefault());
 
